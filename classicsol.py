@@ -83,8 +83,8 @@ def antistokes_regime_fourier_transform_plot(initial,times,drag_coeff,const_coef
     ft_ss = np.fft.rfft(sol.get_positions()[int(len(sol.get_positions())*0.5):])
     abs_ft_full = np.abs(ft_full)
     abs_ft_ss = np.abs(ft_ss)
-    ax[0].plot(range(len(abs_ft_full)),abs_ft_full,'r')
-    ax[1].plot(range(len(abs_ft_ss)),abs_ft_ss,'g')
+    ax[0].plot((1/times[-1])*range(len(abs_ft_full)),abs_ft_full,'r')
+    ax[1].plot((1/times[-1])*range(len(abs_ft_ss)),abs_ft_ss,'g')
     ax[1].set_xlabel('Frequency/AU')
     fig.add_subplot(111, frameon = False)
     plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)        
@@ -101,11 +101,11 @@ def antistokes_regime_fourier_transform_plot(initial,times,drag_coeff,const_coef
 
 
 initial = [1,0]
-times = np.linspace(0,500,2000)
+times = np.linspace(0,500,5000)
 
-#x = antistokes_regime_fourier_transform_plot(initial,times,0.05,1,1,10)
-#x.savefig('Antistokes regime FT plot for a time length of 650')
-y = antistokes_regime_cub_plot(initial,times,0.05,1,1,[30,6])
+x = antistokes_regime_fourier_transform_plot(initial,times,0.05,1,1,100)
+#x.savefig('Antistokes regime FT plot for a time length of 800',dpi = 300,bbox_inches = 'tight')
+#y = antistokes_regime_cub_plot(initial,times,0.05,1,1,[3,1000])
 #y.savefig('Antistokes regime displacement plots for different cubic coefficients sampled 5000 times')
 
 
