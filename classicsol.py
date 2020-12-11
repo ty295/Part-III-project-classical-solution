@@ -14,7 +14,7 @@ class ODE_solver():
     def solver(self):
         t_init = self.time_eval[0]
         t_fin = self.time_eval[-1]
-        sol = scipy.integrate.solve_ivp(self.ODE,(t_init,t_fin),self.y0,t_eval = self.time_eval)
+        sol = scipy.integrate.solve_ivp(self.ODE,(t_init,t_fin),self.y0,t_eval = self.time_eval,rtol = 1e-12)
         self.x = sol.y[0]
         self.v = sol.y[1]
 
@@ -36,13 +36,13 @@ class ODE_solver():
         return self.time_eval.size
 
 
-def stokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff):
+def stokes_regime(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeff):
     def force(x,v):
         return  - const_coeff -drag_coeff*v - lin_coeff*x - cub_coeff*(x**3)
     sol = ODE_solver(initial,force,times)
     return sol
 
-def antistokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff):
+def antistokes_regime(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeff):
     def force(x,v):
         return -const_coeff + drag_coeff*v - lin_coeff*x - cub_coeff*(x**3)
     sol = ODE_solver(initial,force,times)
@@ -55,14 +55,49 @@ def non_linear_regime(initial,times,const_coeff,quad_coeff,lin_coeff,cub_coeff):
     return sol
 
 def stokes_regime_position_plot(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff):
+    fig, ax = plt.subplots()
     sol = stokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff)
     positions = sol.get_positions()
     plt.plot(times,positions)
+    plt.xlabel('Time')
+    plt.ylabel('Position')
+    plt.title('Plot of the electron position against time using a cub coeff of 100')
+    plt.show()
+    return fig
+def stokes_regime_cub_coeff_position_ft_plot(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeffs):
+    fig,ax = plt.subplots()
+    for i in range(len(cub_coeffs)):
+        cub_coeff = cub_coeffs[i]
+        sol = stokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff)
+        positions = sol.get_positions()
+        position_ave = np.average(positions)
+        positions_ft = np.fft.rfft(positions - position_ave)
+        abs_positions_ft = np.abs(positions_ft)
+        frequencies = (2*np.pi/times[-1])*range(len(abs_positions_ft))
+        plt.plot(frequencies,abs_positions_ft,label = 'cub_coeff = {}'.format(cub_coeff))
+    plt.xlabel('Frequency')
+    plt.ylabel('abs(FT(positions))')
+    plt.title('Plot of the FT of the electron position')
+    plt.legend()
     plt.show()
     return fig
 
-def stokes_regime_energy_plot(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff):
-    sol = stokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff)
+def stokes_regime_cub_coeff_position_plot(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeffs):
+    fig,ax = plt.subplots()
+    for i in range(len(cub_coeffs)):
+        sol = stokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeffs[i])
+        positions = sol.get_positions()
+        plt.plot(times,positions,label = 'cub_coeff = {}'.format(cub_coeffs[i]))
+    plt.xlabel('Time')
+    plt.ylabel('Position')
+    plt.title('Position plot for different cubic coefficients in the restoring force')
+    plt.legend()
+    plt.show()
+    return fig
+
+def stokes_regime_energy_plot(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeff):
+    fig,ax = plt.subplots()
+    sol = stokes_regime(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeff)
     positions = sol.get_positions()
     velocities = sol.get_velocities()
     energy = (1/2)*(velocities**2) + (1/2)*(lin_coeff)*(positions**2) + (1/4)*(cub_coeff)*(positions**4)
@@ -70,17 +105,59 @@ def stokes_regime_energy_plot(initial,times,drag_coeff,const_coeff,lin_coeff,cub
     plt.show()
     return fig
 
-def stokes_regime_energy_ft_plot(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff):
+def stokes_regime_energy_ft_plot(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeff):
+    fig,ax = plt.subplots()
     sol = stokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff)
-    positions_ss = sol.get_positions()[int(len(times)/2):]
-    velocities_ss = sol.get_velocities()[int(len(times)/2):]
-    energy_ss = (1/2)*(velocities_ss**2) + (1/2)*(lin_coeff)*(positions_ss**2) + (1/4)*(cub_coeff)*(positions_ss**4)
-    energy_ss_ave = np.average(energy_ss)
-    energy_ft_ss = np.fft.rfft(energy_ss - energy_ss_ave)
-    abs_energy_ft_ss = abs(energy_ft_ss)
-    plt.plot((1/times[-1])*range(len(abs_energy_ft_ss)),abs_energy_ft_ss)
+    positions = sol.get_positions()
+    velocities = sol.get_velocities()
+    energy = (1/2)*(velocities**2) + (1/2)*(lin_coeff)*(positions**2) + (1/4)*(cub_coeff)*(positions**4)
+    energy_ave = np.average(energy)
+    energy_ft = np.fft.rfft(energy - energy_ave)
+    abs_energy_ft = abs(energy_ft)
+    plt.plot((2*np.pi/times[-1])*range(len(abs_energy_ft)),abs_energy_ft)
     plt.show()
     return fig
+
+def stokes_regime_cub_coeff_energy_ft_plot(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeffs):
+    fig,ax = plt.subplots()
+    for i in range(len(cub_coeffs)):
+        sol = stokes_regime(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeffs[i])
+        positions = sol.get_positions()
+        velocities = sol.get_velocities()
+        energy = (1/2)*(velocities**2) + (1/2)*(lin_coeff)*(positions**2) + (1/4)*(cub_coeffs[i])*(positions**4)
+        energy_ave = np.average(energy)
+        energy_ft = np.fft.rfft(energy - energy_ave)
+        abs_energy_ft = abs(energy_ft)
+        plt.plot((2*np.pi/times[-1])*range(len(abs_energy_ft)),abs_energy_ft,label = 'Cub_coeff = {}'.format(cub_coeffs[i]))
+    plt.xlabel('Frequency')
+    plt.ylabel('abs(FT(Energy))')
+    plt.legend()
+    plt.title('FT of the energy for different cubic coefficients in the restoring force (const_coeff = {} drag_coeff = {})'.format(const_coeff,drag_coeff))
+    plt.show()
+    return fig
+
+def stokes_regime_cub_coeff_frequency_plot(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeffs):
+    fig,ax = plt.subplots()
+    ss_frequencies = []
+    for i in range(len(cub_coeffs)):
+        cub_coeff = cub_coeffs[i]
+        sol = stokes_regime(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeff)
+        positions = sol.get_positions()
+        velocities = sol.get_velocities()
+        energy = (1/2)*(velocities**2) + (1/2)*(lin_coeff)*(positions**2) + (1/4)*(cub_coeff)*(positions**4)
+        energy_ave = np.average(energy)
+        energy_ft = np.fft.rfft(energy - energy_ave)
+        abs_energy_ft = abs(energy_ft)
+        frequencies = (2*np.pi/times[-1])*range(len(abs_energy_ft))
+        ss_frequency = frequencies[np.argmax(abs_energy_ft)]
+        ss_frequencies.append(ss_frequency)
+    plt.plot(cub_coeffs,ss_frequencies,marker = 'x',linestyle = '')
+    plt.xlabel('cub_coeff')
+    plt.ylabel('Peak frequency in energy spectrum')
+    plt.title('Plot of the peak frequency in the energy spectrum for different cub_coeffs')
+    plt.show()
+    return fig
+
 
 def non_linear_regime_position_plot(initial,times,const_coeff,quad_coeff,lin_coeff,cub_coeff):
     sol = non_linear_regime(initial,times,const_coeff,quad_coeff,lin_coeff,cub_coeff)
@@ -99,22 +176,21 @@ def non_linear_regime_ft_plot(initial,times,const_coeff,quad_coeff,lin_coeff,cub
     return fig
 
 
-def antistokes_regime_cub_plot(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeffs):
+def antistokes_regime_cub_coeff_plot(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeffs):
     fig, ax = plt.subplots(len(cub_coeffs),sharex = True)
-    colours = ['r','g']
     for i in range(len(cub_coeffs)):
         cub_coeff = cub_coeffs[i]
-        sol = antistokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff)
+        sol = antistokes_regime(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeff)
         if len(cub_coeffs) == 1:
-            ax.plot(sol.get_times(),sol.get_positions(),colours[i],label = ' x = {}'.format(cub_coeff))
+            ax.plot(sol.get_times(),sol.get_positions(),label = ' x = {}'.format(cub_coeff))
         else:
-            ax[i].plot(sol.get_times(),sol.get_positions(),colours[i],label = ' x = {}'.format(cub_coeff))
+            ax[i].plot(sol.get_times(),sol.get_positions(),label = ' x = {}'.format(cub_coeff))
     fig.legend(loc = 'center right')
     fig.add_subplot(111, frameon = False)
     plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)        
     plt.xlabel('Time/AU')
     plt.ylabel('Position/AU')
-    plt.title('Electron positions for parameters ({},{},{},x) sampled {} times'.format(drag_coeff,const_coeff,lin_coeff,len(times)))
+    plt.title('Electron positions for parameters ({},{},{},x)'.format(const_coeff,drag_coeff,lin_coeff))
     plt.show()
     return fig
 
@@ -125,7 +201,7 @@ def antistokes_regime_correlation_plot(initial,times,drag_coeff,const_coeff,lin_
     plt.show()
     return fig
 
-def antistokes_regime_fourier_transform_plot(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff):
+def antistokes_regime_energy_fourier_transform_plot(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff):
     fig,ax = plt.subplots(2)
     sol = antistokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff)
     ft_full = np.fft.rfft(sol.get_positions())
@@ -165,18 +241,34 @@ def antistokes_regime_energy_plot(initial,times,drag_coeff,const_coeff,lin_coeff
     plt.show()
     return fig
 
+def antistokes_regime_energy_ft_plot(initial,times,const_coeff,drag_coeff,lin_coeff,cub_coeff):
+    fig,ax = plt.subplots()
+    sol = antistokes_regime(initial,times,drag_coeff,const_coeff,lin_coeff,cub_coeff)
+    positions = sol.get_positions()
+    velocities = sol.get_velocities()
+    energy = (1/2)*(velocities**2) + (1/2)*(lin_coeff)*(positions**2) + (1/4)*(cub_coeff)*(positions**4)
+    energy_ave = np.average(energy)
+    energy_ft = np.fft.rfft(energy - energy_ave)
+    abs_energy_ft = abs(energy_ft)
+    plt.plot((2*np.pi/times[-1])*range(len(abs_energy_ft)),abs_energy_ft)
+    plt.show()
+    return fig
+
 
 
 initial = [1,0]
-times = np.linspace(0,5000,10000)
+times = np.linspace(0,100,10000)
 
 #z = antistokes_regime_power_spectrum_peak_plot(initial,times,0.05,1,[1,2,3],10)
 #a = antistokes_regime_energy_plot(initial,times,0.5,1,1,10)
-#b = stokes_regime_energy_ft_plot(initial,times,0.001,1.5,1,10)
-#c = stokes_regime_position_plot(initial,times,0.01,1.6,1,10)
+#b = stokes_regime_cub_coeff_frequency_plot(initial,times,0,0.5,4,np.linspace(0,500,50))
+#b = stokes_regime_energy_plot(initial,times,0,0.5,4,5)
+#b = stokes_regime_cub_coeff_energy_ft_plot(initial,times,0,0.5,4,[0,1,2,3,4])
+#c = stokes_regime_position_plot(initial,times,0,0.5,4,5)
+#c = stokes_regime_cub_coeff_position_ft_plot(initial,times,0,0.5,4,[0,1,2,3,10])
 #x = antistokes_regime_fourier_transform_plot(initial,times,0.05,1,1,10)
 #x.savefig('Antistokes regime FT plot for a time length of 800',dpi = 300,bbox_inches = 'tight')
-#y = antistokes_regime_cub_plot(initial,times,0.01,10,1,[1,10])
+y = antistokes_regime_cub_coeff_plot(initial,times,0,0.01,4,[1,1000])
 #y.savefig('Antistokes regime displacement plots for different cubic coefficients sampled 5000 times')
 #d = non_linear_regime_position_plot(initial,times,1,0.5,1,0.1)
-e = non_linear_regime_ft_plot(initial,times,1,0.5,1,0.5)
+#e = non_linear_regime_ft_plot(initial,times,1,0.5,1,0.5)
